@@ -1,0 +1,13 @@
+[package]
+name = "persistent-postgres-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+colored = "3.0.0"
+standard-error = { git = "ssh://git@github.com/AriaBagheri/standard-error-rs", version = "0.1.0" }
+tokio = { version = "1.43.0", features = ["macros", "rt-multi-thread", "sync", "time"] }
+sqlx = { version = "0.8.3", features = ["postgres", "runtime-tokio-native-tls", "macros"] }
+futures-util = "0.3.31"
+serde = { version = "1.0.218", features = ["derive"] }
+serde_json = "1.0.139"
