@@ -259,25 +259,30 @@ impl PersistentPostgres {
     /// it to all registered listener callbacks for the corresponding channel.
     pub fn notifications_thread(&'static self) -> JoinHandle<()> {
         let mut shutdown = self.shutdown_signal_channel.subscribe();
+        let mut interval = tokio::time::interval(Duration::from_millis(10));
         tokio::spawn(async move {
             loop {
-                tokio::select! {
-                    _ = shutdown.recv() => break,
-                    mut listener = self.listener.lock() => {
-                        if let Some(listener) = listener.as_mut() {
-                            if let Ok(notification) = listener.recv().await {
-                                if let Ok(val) = serde_json::from_str::<PgChangeNotification>(notification.payload()) {
-                                    let listeners = self.listeners.read().await;
-                                    if let Some(callbacks) = listeners.get(notification.channel()).map(|m| m.values()) {
-                                        for listener_function in callbacks {
-                                            let sender = Sender::new(1);
-                                            let handle = listener_function(val.clone(), sender.subscribe());
-                                            self.join_handles.lock().await.push((sender, handle));
-                                        }
+                let mut listener = self.listener.lock().await;
+                if let Some(listener) = listener.as_mut() {
+                    tokio::select! {
+                        _ = shutdown.recv() => break,
+                        Ok(notification) = listener.recv() => {
+                            if let Ok(val) = serde_json::from_str::<PgChangeNotification>(notification.payload()) {
+                                let listeners = self.listeners.read().await;
+                                if let Some(callbacks) = listeners.get(notification.channel()).map(|m| m.values()) {
+                                    for listener_function in callbacks {
+                                        let sender = Sender::new(1);
+                                        let handle = listener_function(val.clone(), sender.subscribe());
+                                        self.join_handles.lock().await.push((sender, handle));
                                     }
                                 }
                             }
                         }
+                    } 
+                } else {
+                    tokio::select! {
+                        _ = shutdown.recv() => break,
+                        _ = interval.tick() => {continue}
                     }
                 }
             }
