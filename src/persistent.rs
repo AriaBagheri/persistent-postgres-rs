@@ -278,7 +278,7 @@ impl PersistentPostgres {
                                 }
                             }
                         }
-                    } 
+                    }
                 } else {
                     tokio::select! {
                         _ = shutdown.recv() => break,
@@ -472,21 +472,12 @@ impl PersistentPostgres {
                 });
         }
 
-        if let Some(connection) = self.pool.write().await.as_mut() {
-            connection.close().await;
+        if let Some(listener) = self.listener.lock().await.take() {
+            drop(listener);
             println!(
                 "{}",
-                "POSTGRES - SHUTDOWN - Postgres connection closed gracefully!".cyan()
+                "POSTGRES - SHUTDOWN - Postgres listener dropped gracefully!".cyan()
             );
-        }
-        if let mut listener = self.listener.lock().await {
-            if listener.is_some() {
-                *listener = None;
-                println!(
-                    "{}",
-                    "POSTGRES - SHUTDOWN - Postgres listener dropped gracefully!".cyan()
-                );
-            }
         }
 
         println!("{}", "POSTGRES - SHUTDOWN - Goodbye!".cyan())
