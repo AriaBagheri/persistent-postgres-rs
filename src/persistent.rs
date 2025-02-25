@@ -12,7 +12,7 @@ use std::time::Duration;
 use standard_error::traits::StandardErrorDescriptionTrait;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::broadcast::{Receiver, Sender};
-use tokio::sync::{Mutex, MutexGuard, RwLock};
+use tokio::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use tokio::task::JoinHandle;
 
 /// # PersistentPostgres
@@ -70,6 +70,17 @@ impl PersistentPostgres {
     pub async fn initiate(&'static self) {
         *self.monitor_handle.lock().await = Some(self.monitor_thread());
         *self.notifications_handle.lock().await = Some(self.notifications_thread());
+    }
+
+    pub async fn pool(&self) -> RwLockReadGuard<'_, Pool<Postgres>> {
+        let mut interval = tokio::time::interval(Duration::from_millis(100));
+        loop {
+            let x = self.pool.read().await;
+            if x.is_some() {
+                return RwLockReadGuard::map(x, |f| f.as_ref().unwrap());
+            }
+            interval.tick().await;
+        }
     }
 
     /// Sets the PostgreSQL connection URI and establishes a connection pool.
