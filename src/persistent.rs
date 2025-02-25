@@ -480,6 +480,24 @@ impl PersistentPostgres {
             );
         }
 
+        if let Some(connection) = self.pool.write().await.as_mut() {
+            match tokio::time::timeout(Duration::from_secs(5), connection.close()).await {
+                Ok(_) => {
+                    println!(
+                        "{}",
+                        "POSTGRES - SHUTDOWN - Postgres connection closed gracefully!".cyan()
+                    );
+                },
+                Err(_) => {
+                    println!(
+                        "{} {}",
+                        "POSTGRES - SHUTDOWN - Postgres connection terminated".cyan(),
+                        "forcefully".bold().red()
+                    );
+                }
+            }
+        }
+
         println!("{}", "POSTGRES - SHUTDOWN - Goodbye!".cyan())
     }
 }
