@@ -266,6 +266,7 @@ impl PersistentPostgres {
                 if let Some(listener) = self.listener.lock().await.as_mut() {
                     tokio::select! {
                         _ = shutdown.recv() => break,
+                        _ = interval.tick() => continue,
                         Ok(notification) = listener.recv() => {
                             if let Ok(val) = serde_json::from_str::<PgChangeNotification>(notification.payload()) {
                                 let listeners = self.listeners.read().await;
