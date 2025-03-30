@@ -376,11 +376,9 @@ impl PersistentPostgres {
         function: fn(PgChangeNotification, Receiver<()>) -> JoinHandle<()>,
     ) {
         // If a listener is active, ensure it listens on this channel.
-        self.listener
-            .lock()
-            .await
-            .as_mut()
-            .map(|f| f.listen(&channel));
+        if let Some(listener) = self.listener.lock().await.as_mut() {
+            let _ = listener.listen(&channel).await.expect("Listener failed to listen!");
+        }
         let mut all_listeners = self.listeners.write().await;
         let channel_listeners = all_listeners.entry(channel).or_insert_with(HashMap::new);
         channel_listeners.insert(tag, function);
