@@ -79,6 +79,7 @@ impl PersistentPostgres {
             if x.is_some() {
                 return RwLockReadGuard::map(x, |f| f.as_ref().unwrap());
             }
+            drop(x);
             interval.tick().await;
         }
     }
@@ -262,8 +263,7 @@ impl PersistentPostgres {
         let mut interval = tokio::time::interval(Duration::from_millis(10));
         tokio::spawn(async move {
             loop {
-                let mut listener = self.listener.lock().await;
-                if let Some(listener) = listener.as_mut() {
+                if let Some(listener) = self.listener.lock().await.as_mut() {
                     tokio::select! {
                         _ = shutdown.recv() => break,
                         Ok(notification) = listener.recv() => {
